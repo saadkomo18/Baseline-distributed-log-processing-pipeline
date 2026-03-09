@@ -133,6 +133,85 @@ Example log entry:
 
 ---
 
+# How to Reproduce the Experiments
+
+The following steps allow researchers to reproduce the baseline experiments.
+
+## 1. Kafka Setup
+
+Install Java and download Kafka:
+
+sudo apt update
+sudo apt install openjdk-11-jdk -y
+
+wget https://downloads.apache.org/kafka/3.6.0/kafka_2.13-3.6.0.tgz
+tar -xzf kafka_2.13-3.6.0.tgz
+cd kafka_2.13-3.6.0
+
+Start the Kafka server:
+
+bin/kafka-server-start.sh config/kraft/server.properties
+
+Create the topic:
+
+bin/kafka-topics.sh --create \
+--topic logs \
+--bootstrap-server localhost:9092
+
+Run the producer benchmark:
+
+bin/kafka-producer-perf-test.sh \
+--topic logs \
+--num-records 100000 \
+--record-size 100 \
+--throughput 5000 \
+--producer-props bootstrap.servers=localhost:9092
+
+---
+
+## 2. Spark Processing
+
+Download Spark:
+
+wget https://downloads.apache.org/spark/spark-3.5.0/spark-3.5.0-bin-hadoop3.tgz
+tar -xzf spark-3.5.0-bin-hadoop3.tgz
+
+Run the Spark shell:
+
+spark-shell --master local[*]
+
+Load and analyze the dataset:
+
+val logs = sc.textFile("file:///home/ubuntu/biglogs.txt")
+val errors = logs.filter(_.contains("ERROR"))
+errors.count()
+
+---
+
+## 3. Ceph Storage Test
+
+Install MicroCeph:
+
+sudo snap install microceph --classic
+
+Initialize the cluster:
+
+sudo microceph init
+
+Add storage disk:
+
+sudo microceph disk add /dev/nvme1n1
+
+Create a pool:
+
+sudo microceph.ceph osd pool create logpool 32
+
+Run storage benchmark:
+
+sudo microceph.rados bench -p logpool 60 write --no-cleanup
+
+---
+
 # Tutorial Paper
 
 This repository accompanies the tutorial paper submitted as part of a research project on scalable log processing systems.
